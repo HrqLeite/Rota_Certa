@@ -1,0 +1,391 @@
+<title>Rota Certa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: painel de embarque (form) no topo, depois cartão de embarque com voos, depois roteiro dia a dia em linha do tempo */
+:root{
+  --bg:#eef3f4; --surface:#ffffff; --ink:#122a31; --muted:#5a7179; --line:#d3e0e3;
+  --board:#14262c; --board-ink:#f1e7c8; --signal:#f3c13a; --accent:#1a6d84; --accent-soft:#d9ecf1;
+  --good:#2f8a57; --warn:#b7791f;
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c181c; --surface:#13242a; --ink:#e4eef0; --muted:#8fa7ae; --line:#24404a;
+  --board:#081114; --board-ink:#f1e7c8; --signal:#f3c13a; --accent:#5fb7cf; --accent-soft:#163742;
+  --good:#5cc489; --warn:#e0a94a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c181c; --surface:#13242a; --ink:#e4eef0; --muted:#8fa7ae; --line:#24404a;
+  --board:#081114; --board-ink:#f1e7c8; --signal:#f3c13a; --accent:#5fb7cf; --accent-soft:#163742;
+  --good:#5cc489; --warn:#e0a94a; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px;display:grid;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:700}
+h2{font-size:1.15rem;font-weight:700}
+h3{font-size:.98rem;font-weight:500}
+.mono{font-family:var(--f-mono)}
+.eyebrow{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+a{color:var(--accent)}
+button,input,select{font:inherit}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+
+/* Painel */
+.board{background:var(--board);color:var(--board-ink);border-radius:18px;padding:24px;display:grid;gap:20px}
+.board header{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:end;justify-content:space-between}
+.board .eyebrow{color:#9fb3b0}
+.board p{margin:0;color:#c9cdb8;max-width:60ch}
+form{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.fld{display:grid;gap:6px;min-width:0}
+.fld label{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#9fb3b0;font-weight:600}
+.fld input,.fld select{width:100%;background:#1f363d;border:1px solid #2f4e57;color:var(--board-ink);border-radius:10px;padding:11px 12px;font-family:var(--f-mono);font-size:.95rem}
+.fld input::placeholder{color:#7d928f}
+.fld input:focus{border-color:var(--signal);outline:none}
+.c4{grid-column:span 4}.c3{grid-column:span 3}.c2{grid-column:span 2}.c6{grid-column:span 6}.c12{grid-column:span 12}
+.budget{grid-column:span 12;display:grid;grid-template-columns:auto 1fr;gap:12px 16px;align-items:center;background:#1a2f35;border:1px dashed #3d5c64;border-radius:12px;padding:14px}
+.budget .fld{grid-column:auto}
+.toggle{display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--board-ink);font-weight:600}
+.toggle input{width:20px;height:20px;accent-color:var(--signal)}
+.budget-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.actions{grid-column:span 12;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{border:0;border-radius:999px;padding:12px 22px;font-weight:700;cursor:pointer}
+.btn-go{background:var(--signal);color:#1b1a10}
+.btn-go:disabled{opacity:.6;cursor:wait}
+.btn-ghost{background:transparent;color:var(--board-ink);border:1px solid #3d5c64}
+.status{font-size:.88rem;color:#c9cdb8}
+
+/* Resultado */
+.tag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.tag.example{background:var(--signal);color:#1b1a10}
+.section-head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+.note{color:var(--muted);font-size:.86rem;margin:0}
+
+.pass{background:var(--surface);border:1px solid var(--line);border-radius:18px;display:grid;grid-template-columns:1fr 260px;overflow:hidden}
+.pass-main{padding:22px;display:grid;gap:18px;min-width:0}
+.pass-stub{border-left:2px dashed var(--line);padding:22px;display:grid;gap:10px;align-content:start;background:var(--accent-soft)}
+.route{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+.iata{font-family:var(--f-mono);font-weight:700;font-size:clamp(2rem,6vw,3rem);line-height:1;letter-spacing:.02em}
+.city{font-size:.85rem;color:var(--muted)}
+.route .line{height:2px;background:repeating-linear-gradient(90deg,var(--muted) 0 6px,transparent 6px 12px);position:relative}
+.route .line::after{content:"";position:absolute;right:-2px;top:-5px;border-left:10px solid var(--muted);border-top:6px solid transparent;border-bottom:6px solid transparent}
+.facts{display:flex;flex-wrap:wrap;gap:8px 26px}
+.facts div{display:grid}
+.facts b{font-family:var(--f-mono);font-size:1rem}
+.offers{display:grid;gap:10px}
+.offer{display:grid;grid-template-columns:1fr auto;gap:4px 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+.offer .price{font-family:var(--f-mono);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.offer .why{grid-column:1/-1;color:var(--muted);font-size:.88rem}
+.offer.best{border-color:var(--accent);box-shadow:inset 4px 0 0 var(--accent)}
+.stars{color:var(--warn);letter-spacing:2px;font-size:.85rem}
+.links{display:grid;gap:8px}
+.links a{display:flex;justify-content:space-between;align-items:center;gap:8px;text-decoration:none;background:var(--surface);border:1px solid var(--line);padding:10px 12px;border-radius:10px;font-weight:600;color:var(--ink)}
+.links a:hover{border-color:var(--accent);color:var(--accent)}
+.links a span{font-size:.8rem;color:var(--muted);font-weight:500}
+ul.tips{margin:0;padding-left:18px;color:var(--muted);font-size:.9rem;display:grid;gap:4px}
+
+.plan{display:grid;gap:18px}
+.budget-bar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--line)}
+.budget-bar i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.85rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend b{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.over{color:var(--warn);font-weight:600}
+.stay{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+
+.days{display:grid;gap:14px}
+.day{display:grid;grid-template-columns:86px 1fr;gap:16px}
+.day-date{font-family:var(--f-mono);text-align:right;padding-top:4px}
+.day-date b{display:block;font-size:1.6rem;line-height:1}
+.day-date span{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.day-body{border-left:2px solid var(--line);padding-left:18px;display:grid;gap:10px;min-width:0}
+.acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.act{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:grid;grid-template-rows:auto 1fr}
+.thumb{height:92px;position:relative;display:flex;align-items:end;padding:10px 12px;color:#fff;text-decoration:none}
+.thumb::after{content:"Ver fotos ↗";position:absolute;top:10px;right:10px;font-size:.72rem;font-weight:700;background:rgba(0,0,0,.35);padding:3px 8px;border-radius:999px}
+.thumb strong{font-family:var(--f-display);font-weight:500;font-size:.95rem;line-height:1.2;text-shadow:0 1px 4px rgba(0,0,0,.4)}
+.act-body{padding:12px 14px;display:grid;gap:8px;align-content:start}
+.act-meta{display:flex;justify-content:space-between;gap:8px;font-size:.82rem;color:var(--muted)}
+.act-meta b{font-family:var(--f-mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.act p{margin:0;font-size:.9rem}
+.act-links{display:flex;flex-wrap:wrap;gap:6px}
+.act-links a{font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.act-links a:hover{border-color:var(--accent)}
+.free{color:var(--good);font-weight:700}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:18px;color:var(--muted)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+
+@media (max-width:820px){
+  .c4,.c3{grid-column:span 6}.c2{grid-column:span 6}
+  .pass{grid-template-columns:1fr}
+  .pass-stub{border-left:0;border-top:2px dashed var(--line)}
+}
+@media (max-width:520px){
+  .c4,.c3,.c2,.c6{grid-column:span 12}
+  .budget{grid-template-columns:1fr}
+  .day{grid-template-columns:1fr;gap:6px}
+  .day-date{text-align:left;display:flex;gap:8px;align-items:baseline}
+  .day-date b{font-size:1.2rem}
+  .day-body{border-left:0;padding-left:0}
+}
+</style>
+
+<div class="wrap">
+  <section class="board" aria-labelledby="t">
+    <header>
+      <div>
+        <div class="eyebrow">Painel de embarque</div>
+        <h1 id="t">Rota Certa</h1>
+      </div>
+      <p>Diga para onde e quando. A gente compara voos por preço e qualidade e, se quiser, monta um roteiro de passeios que cabe no seu bolso.</p>
+    </header>
+
+    <form id="f" autocomplete="off">
+      <div class="fld c3"><label for="origem">Saindo de</label><input id="origem" required placeholder="São Paulo ou GRU" value="São Paulo"></div>
+      <div class="fld c3"><label for="destino">Destino</label><input id="destino" required placeholder="Lisboa ou LIS" value="Lisboa"></div>
+      <div class="fld c2"><label for="ida">Ida</label><input id="ida" type="date" required></div>
+      <div class="fld c2"><label for="volta">Volta</label><input id="volta" type="date" required></div>
+      <div class="fld c2"><label for="pax">Pessoas</label><select id="pax"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+
+      <div class="budget">
+        <label class="toggle"><input type="checkbox" id="usaOrc" checked> Montar roteiro pelo meu orçamento</label>
+        <div class="budget-row" id="orcCampos">
+          <div class="fld"><label for="orc">Quanto quer gastar (R$, total)</label><input id="orc" type="number" min="500" step="100" placeholder="15000" value="18000"></div>
+          <div class="fld"><label for="estilo">Estilo</label>
+            <select id="estilo"><option value="econômico">Econômico</option><option value="equilibrado" selected>Equilibrado</option><option value="confortável">Confortável</option><option value="luxo">Luxo</option></select></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-go" id="go" type="submit">Procurar viagem</button>
+        <button class="btn btn-ghost" id="stop" type="button" hidden>Parar</button>
+        <span class="status" id="status" role="status"></span>
+      </div>
+    </form>
+  </section>
+
+  <section id="voos" aria-live="polite"></section>
+  <section id="roteiro" aria-live="polite"></section>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const brl = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
+const enc = encodeURIComponent;
+const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const iso = d => d.toISOString().slice(0,10);
+const WEEK = ["dom","seg","ter","qua","qui","sex","sáb"];
+const MON = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const parseD = s => { const [y,m,d] = s.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); };
+const fmtD = s => { const d = parseD(s); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
+const daysBetween = (a,b) => { const out=[]; for(let d=parseD(a); d<=parseD(b); d=new Date(d.getTime()+864e5)) out.push(iso(d)); return out; };
+
+// Datas padrão: daqui a ~5 semanas, 6 dias
+(function(){ const t=new Date(); const a=new Date(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate()+35)); const b=new Date(a.getTime()+6*864e5);
+  $("#ida").value=iso(a); $("#volta").value=iso(b); })();
+$("#usaOrc").addEventListener("change",e=>{ $("#orcCampos").style.opacity = e.target.checked ? 1 : .4; $("#orc").disabled = $("#estilo").disabled = !e.target.checked; });
+
+/* ---------- Links de busca ---------- */
+function flightLinks(o, d, ida, volta, pax){
+  const isI = s => /^[A-Z]{3}$/.test(s||"");
+  const yymmdd = s => s.slice(2).replace(/-/g,"");
+  const ad = pax>1 ? `/${pax}adults` : "";
+  const L = [{n:"Google Voos", s:"compara todas", u:`https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=${enc(`Flights from ${o.iata||o.cidade} to ${d.iata||d.cidade} on ${ida} through ${volta} ${pax} adults`)}`}];
+  if(isI(o.iata)&&isI(d.iata)){
+    L.push({n:"Skyscanner", s:"mais barato", u:`https://www.skyscanner.com.br/transporte/passagens-aereas/${o.iata.toLowerCase()}/${d.iata.toLowerCase()}/${yymmdd(ida)}/${yymmdd(volta)}/?adultsv2=${pax}&currency=BRL`});
+    L.push({n:"Kayak", s:"melhor custo-benefício", u:`https://www.kayak.com.br/flights/${o.iata}-${d.iata}/${ida}/${volta}${ad}?sort=bestflight_a`});
+    L.push({n:"Momondo", s:"segunda opinião", u:`https://www.momondo.com.br/flight-search/${o.iata}-${d.iata}/${ida}/${volta}${ad}?sort=bestflight_a`});
+  }
+  return L;
+}
+const actLinks = (nome, cidade) => ({
+  fotos:`https://www.google.com/search?tbm=isch&q=${enc(nome+" "+cidade)}`,
+  mapa:`https://www.google.com/maps/search/?api=1&query=${enc(nome+" "+cidade)}`,
+  reservar:`https://www.getyourguide.com.br/s/?q=${enc(nome+" "+cidade)}`,
+  avaliar:`https://www.tripadvisor.com.br/Search?q=${enc(nome+" "+cidade)}`
+});
+function hue(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))%360; return h; }
+
+/* ---------- Render ---------- */
+function renderVoos(v, q, isExample){
+  const links = flightLinks(v.origem, v.destino, q.ida, q.volta, q.pax);
+  const ops = (v.opcoes||[]).slice().sort((a,b)=>(b.nota/b.precoEstimado)-(a.nota/a.precoEstimado));
+  const bestIdx = 0;
+  $("#voos").innerHTML = `
+  <div class="section-head" style="margin-bottom:12px">
+    <h2>Cartão de embarque</h2>
+    ${isExample?'<span class="tag example">Exemplo</span>':'<span class="tag">Estimativa</span>'}
+  </div>
+  <article class="pass">
+    <div class="pass-main">
+      <div class="route">
+        <div><div class="iata">${esc(v.origem.iata||"—")}</div><div class="city">${esc(v.origem.cidade)}</div></div>
+        <div class="line" aria-hidden="true"></div>
+        <div style="text-align:right"><div class="iata">${esc(v.destino.iata||"—")}</div><div class="city">${esc(v.destino.cidade)}${v.destino.pais?", "+esc(v.destino.pais):""}</div></div>
+      </div>
+      <div class="facts">
+        <div><span class="eyebrow">Ida</span><b>${fmtD(q.ida)}</b></div>
+        <div><span class="eyebrow">Volta</span><b>${fmtD(q.volta)}</b></div>
+        <div><span class="eyebrow">Pessoas</span><b>${q.pax}</b></div>
+        ${v.faixaPreco?`<div><span class="eyebrow">Ida e volta / pessoa</span><b>${brl(v.faixaPreco.min)} – ${brl(v.faixaPreco.max)}</b></div>`:""}
+      </div>
+      <div class="offers">
+        ${ops.map((o,i)=>`
+          <div class="offer ${i===bestIdx?"best":""}">
+            <div><strong>${esc(o.companhia)}</strong> <span class="note" style="display:inline">· ${esc(o.tipo)} · ${esc(o.duracao)}</span>${i===bestIdx?' <span class="tag">Melhor equilíbrio</span>':""}</div>
+            <div class="price">${brl(o.precoEstimado)}<div class="stars" aria-label="Qualidade ${o.nota} de 5">${"★".repeat(Math.round(o.nota))}${"☆".repeat(5-Math.round(o.nota))}</div></div>
+            <div class="why">${esc(o.porque)}</div>
+          </div>`).join("")}
+      </div>
+      ${v.dicas?.length?`<ul class="tips">${v.dicas.map(d=>`<li>${esc(d)}</li>`).join("")}</ul>`:""}
+      <p class="note">Preços são estimativas de mercado, não cotação ao vivo. O valor real aparece nos buscadores ao lado, já com suas datas.</p>
+    </div>
+    <aside class="pass-stub">
+      <span class="eyebrow">Ver preço real agora</span>
+      <div class="links">${links.map(l=>`<a href="${l.u}" target="_blank" rel="noopener">${l.n}<span>${l.s} ↗</span></a>`).join("")}</div>
+    </aside>
+  </article>`;
+}
+
+const COLORS = {passagens:"#1a6d84", hospedagem:"#6a8fa0", alimentacao:"#e0a94a", passeios:"#f3c13a", reserva:"#9fb3b0"};
+const LABEL = {passagens:"Passagens", hospedagem:"Hospedagem", alimentacao:"Comida", passeios:"Passeios", reserva:"Reserva"};
+function renderRoteiro(r, q, isExample){
+  const cidade = q.cidadeDestino;
+  const div = r.divisao||{};
+  const total = Object.values(div).reduce((a,b)=>a+(+b||0),0) || 1;
+  const somaPasseios = (r.dias||[]).flatMap(d=>d.atividades||[]).reduce((a,x)=>a+(+x.custo||0),0);
+  $("#roteiro").innerHTML = `
+  <div class="plan">
+    <div class="section-head">
+      <h2>Roteiro para ${esc(cidade)}</h2>
+      ${isExample?'<span class="tag example">Exemplo</span>':`<span class="tag">Orçamento ${brl(q.orcamento)}</span>`}
+    </div>
+    ${r.resumo?`<p style="margin:0;max-width:70ch">${esc(r.resumo)}</p>`:""}
+    <div>
+      <div class="budget-bar" role="img" aria-label="Divisão do orçamento">${Object.keys(LABEL).map(k=>`<i style="width:${(+div[k]||0)/total*100}%;background:${COLORS[k]}"></i>`).join("")}</div>
+      <div class="legend" style="margin-top:8px">${Object.keys(LABEL).map(k=>`<span><i style="background:${COLORS[k]}"></i>${LABEL[k]} <b>${brl(div[k])}</b></span>`).join("")}</div>
+      <p class="note" style="margin-top:6px">Passeios somados no roteiro: <b class="mono">${brl(somaPasseios)}</b> para ${q.pax} pessoa${q.pax>1?"s":""}.
+        ${total>q.orcamento*1.02?`<span class="over">Passa do orçamento em ${brl(total-q.orcamento)}.</span>`:""}</p>
+    </div>
+    ${r.hospedagem?`<div class="stay"><span class="eyebrow">Onde ficar</span><strong>${esc(r.hospedagem.bairro)}</strong><span class="note">${esc(r.hospedagem.sugestao)}</span><b class="mono">${brl(r.hospedagem.diaria)}/noite</b>
+      <a href="https://www.booking.com/searchresults.pt-br.html?ss=${enc(r.hospedagem.bairro+", "+cidade)}&checkin=${q.ida}&checkout=${q.volta}&group_adults=${q.pax}" target="_blank" rel="noopener">Ver hotéis ↗</a></div>`:""}
+    <div class="days">
+      ${(r.dias||[]).map(d=>{ const dt=parseD(d.data); return `
+        <div class="day">
+          <div class="day-date"><b>${dt.getUTCDate()}</b><span>${WEEK[dt.getUTCDay()]} · ${MON[dt.getUTCMonth()]}</span></div>
+          <div class="day-body">
+            <h3>${esc(d.titulo)}</h3>
+            <div class="acts">${(d.atividades||[]).map(a=>{ const L=actLinks(a.nome,cidade); const h=hue(a.nome); return `
+              <article class="act">
+                <a class="thumb" href="${L.fotos}" target="_blank" rel="noopener" style="background:linear-gradient(135deg,hsl(${h} 45% 38%),hsl(${(h+50)%360} 55% 52%))" aria-label="Ver fotos de ${esc(a.nome)}"><strong>${esc(a.nome)}</strong></a>
+                <div class="act-body">
+                  <div class="act-meta"><span>${esc(a.horario||"")}</span>${(+a.custo)>0?`<b>${brl(a.custo)}</b>`:'<span class="free">Grátis</span>'}</div>
+                  <p>${esc(a.descricao)}</p>
+                  ${a.operador?`<div class="note">Quem faz: ${esc(a.operador)}</div>`:""}
+                  <div class="act-links">
+                    <a href="${L.mapa}" target="_blank" rel="noopener">Contato e mapa ↗</a>
+                    ${(+a.custo)>0?`<a href="${L.reservar}" target="_blank" rel="noopener">Reservar ↗</a>`:""}
+                    <a href="${L.avaliar}" target="_blank" rel="noopener">Avaliações ↗</a>
+                  </div>
+                </div>
+              </article>`;}).join("")}
+            </div>
+          </div>
+        </div>`;}).join("")}
+    </div>
+  </div>`;
+}
+
+/* ---------- Exemplo (aparece antes da primeira busca) ---------- */
+const EX_Q = {origem:"São Paulo",destino:"Lisboa",ida:"2026-12-10",volta:"2026-12-15",pax:2,orcamento:18000,cidadeDestino:"Lisboa"};
+const EX_V = {origem:{cidade:"São Paulo",iata:"GRU"},destino:{cidade:"Lisboa",iata:"LIS",pais:"Portugal"},faixaPreco:{min:4200,max:6800},
+  opcoes:[
+    {companhia:"TAP Air Portugal",tipo:"Direto",duracao:"10h",precoEstimado:5200,nota:4,porque:"Voo direto noturno, chega cedo em Lisboa. Bom equilíbrio entre preço e tempo."},
+    {companhia:"LATAM",tipo:"Direto",duracao:"10h",precoEstimado:5600,nota:4,porque:"Direto e com acúmulo no LATAM Pass. Serviço de bordo consistente."},
+    {companhia:"Iberia",tipo:"1 conexão (Madri)",duracao:"14h",precoEstimado:4400,nota:3,porque:"Mais barato, mas a conexão soma cerca de 4 horas."}],
+  dicas:["Dezembro tem alta perto do Natal: comprar 6 a 8 semanas antes ajuda.","Tarifas de terça e quarta costumam sair mais em conta."]};
+const EX_R = {resumo:"Seis dias entre Lisboa e Sintra, com miradouros grátis, um dia de palácios e uma noite de fado.",
+  divisao:{passagens:10400,hospedagem:3500,alimentacao:2200,passeios:1300,reserva:600},
+  hospedagem:{bairro:"Baixa-Chiado",sugestao:"Central, plano e perto do metrô.",diaria:700},
+  dias:[
+    {data:"2026-12-10",titulo:"Chegada e Baixa",atividades:[{nome:"Praça do Comércio",horario:"Tarde",descricao:"Passeio a pé pela Baixa até o Arco da Rua Augusta.",custo:0,operador:""},{nome:"Miradouro de Santa Luzia",horario:"Fim de tarde",descricao:"Pôr do sol sobre Alfama.",custo:0,operador:""}]},
+    {data:"2026-12-11",titulo:"Belém",atividades:[{nome:"Mosteiro dos Jerónimos",horario:"Manhã",descricao:"Joia do estilo manuelino. Chegue cedo.",custo:180,operador:"Entrada oficial"},{nome:"Torre de Belém",horario:"Tarde",descricao:"Vista do Tejo e pastéis na Antiga Confeitaria.",custo:120,operador:"Entrada oficial"}]},
+    {data:"2026-12-12",titulo:"Dia em Sintra",atividades:[{nome:"Palácio da Pena",horario:"Dia inteiro",descricao:"Tour guiado com transporte desde Lisboa.",custo:650,operador:"Tours guiados locais"}]},
+    {data:"2026-12-13",titulo:"Alfama e fado",atividades:[{nome:"Elétrico 28",horario:"Manhã",descricao:"O bonde clássico pelas ladeiras.",custo:40,operador:"Carris"},{nome:"Casa de fado em Alfama",horario:"Noite",descricao:"Jantar com fado ao vivo.",custo:310,operador:"Casas de fado da Alfama"}]},
+    {data:"2026-12-14",titulo:"Parque das Nações",atividades:[{nome:"Oceanário de Lisboa",horario:"Manhã",descricao:"Um dos maiores aquários da Europa.",custo:0,operador:""}]},
+    {data:"2026-12-15",titulo:"Volta",atividades:[{nome:"LX Factory",horario:"Manhã",descricao:"Lojas e cafés antes do aeroporto.",custo:0,operador:""}]}]};
+renderVoos(EX_V, EX_Q, true);
+renderRoteiro(EX_R, EX_Q, true);
+
+/* ---------- Busca com Claude ---------- */
+let sample = null, ctl = null;
+(async()=>{ try{ sample = await window.claude?.use?.("sample"); }catch{} })();
+const status = (html)=>{ $("#status").innerHTML = html; };
+
+function promptVoos(q){
+  return `Você é um especialista em passagens aéreas para viajantes brasileiros. Hoje é ${iso(new Date())}.
+Viagem: de "${q.origem}" para "${q.destino}", ida ${q.ida}, volta ${q.volta}, ${q.pax} adulto(s).
+Identifique o principal aeroporto (código IATA) de cada cidade. Liste 3 ou 4 opções realistas de companhias que operam essa rota, com preço estimado ida e volta POR PESSOA em reais e nota de qualidade de 1 a 5 (conforto, pontualidade, bagagem, conexões).
+Responda só com JSON neste formato:
+{"origem":{"cidade":"São Paulo","iata":"GRU"},"destino":{"cidade":"Lisboa","iata":"LIS","pais":"Portugal"},"faixaPreco":{"min":4200,"max":6800},"opcoes":[{"companhia":"TAP","tipo":"Direto","duracao":"10h","precoEstimado":5200,"nota":4,"porque":"frase curta"}],"dicas":["frase curta","frase curta"]}`;
+}
+function promptRoteiro(q, dias){
+  const curto = dias.length>8;
+  return `Você monta roteiros de viagem para brasileiros. Destino: ${q.destino}. Saindo de ${q.origem}. Datas: ${dias.join(", ")}. ${q.pax} pessoa(s). Estilo: ${q.estilo}.
+Orçamento TOTAL da viagem: R$ ${q.orcamento} (inclui passagens ida e volta para todos, hospedagem, comida e passeios). Estime as passagens de forma realista e distribua o resto. O total da "divisao" não pode passar do orçamento.
+Para cada data, sugira ${curto?"1 ou 2":"2 ou 3"} passeios reais e conhecidos (nomes exatos que se encontram no Google Maps), com custo total para o grupo em reais (0 se grátis). Inclua opções grátis se o orçamento for apertado. No primeiro e no último dia, passeios leves.
+"operador": empresa, guia ou local que faz o passeio (nome real conhecido) ou "" se for livre.
+Descrições com no máximo 15 palavras.
+Responda só com JSON:
+{"resumo":"1 frase","divisao":{"passagens":0,"hospedagem":0,"alimentacao":0,"passeios":0,"reserva":0},"hospedagem":{"bairro":"nome","sugestao":"frase curta","diaria":0},"dias":[{"data":"YYYY-MM-DD","titulo":"curto","atividades":[{"nome":"Nome exato","horario":"Manhã","descricao":"...","custo":0,"operador":""}]}]}`;
+}
+const errMsg = e => ({not_granted:"Você não permitiu o uso do Claude nesta página.",rate_limited:"Muitas buscas seguidas. Espere um pouco e tente de novo.",invalid_json:"A resposta veio incompleta. Tente de novo.",session_expired:"Sua sessão expirou. Entre de novo no Claude.",sampling_disabled:"O Claude não está disponível nesta conta."}[e?.code] || "Algo falhou na busca. Tente de novo.");
+
+$("#stop").onclick = ()=> ctl?.abort();
+$("#f").addEventListener("submit", async ev=>{
+  ev.preventDefault();
+  const q = { origem:$("#origem").value.trim(), destino:$("#destino").value.trim(), ida:$("#ida").value, volta:$("#volta").value,
+    pax:+$("#pax").value, usaOrc:$("#usaOrc").checked, orcamento:+$("#orc").value||0, estilo:$("#estilo").value };
+  if(q.volta < q.ida){ status("A volta precisa ser depois da ida."); return; }
+  const dias = daysBetween(q.ida, q.volta);
+  if(dias.length>21){ status("Para o roteiro, escolha até 21 dias."); return; }
+  if(q.usaOrc && q.orcamento<500){ status("Informe um orçamento de pelo menos R$ 500."); return; }
+
+  // Sem Claude: ao menos os links de voo com as datas
+  const fallbackV = { origem:{cidade:q.origem, iata:/^[a-z]{3}$/i.test(q.origem)?q.origem.toUpperCase():""}, destino:{cidade:q.destino, iata:/^[a-z]{3}$/i.test(q.destino)?q.destino.toUpperCase():""}, opcoes:[], dicas:[] };
+  if(!sample){ try{ sample = await window.claude?.use?.("sample"); }catch{} }
+  if(!sample){
+    renderVoos({...fallbackV, faixaPreco:null}, q, false);
+    $("#roteiro").innerHTML = `<div class="empty">A análise de voos e o roteiro usam o Claude, que não está disponível nesta visualização. Os links de busca acima já abrem com suas datas.</div>`;
+    status(""); return;
+  }
+
+  ctl = new AbortController();
+  $("#go").disabled = true; $("#stop").hidden = false;
+  status('<span class="spin"></span>Comparando voos' + (q.usaOrc?" e montando o roteiro…":"…"));
+  $("#voos").innerHTML = `<div class="empty"><span class="spin"></span>Procurando as melhores combinações de preço e qualidade para ${esc(q.destino)}…</div>`;
+  $("#roteiro").innerHTML = q.usaOrc ? `<div class="empty"><span class="spin"></span>Montando ${dias.length} dias de passeios dentro de ${brl(q.orcamento)}…</div>` : "";
+
+  const pV = sample.json(promptVoos(q), {signal:ctl.signal}).then(v=>{
+    if(!v?.origem||!v?.destino) throw {code:"invalid_json"};
+    q.cidadeDestino = v.destino.cidade || q.destino;
+    renderVoos(v, q, false);
+  }).catch(e=>{ if(e?.code==="cancelled") return; renderVoos({...fallbackV, faixaPreco:null}, q, false);
+    $("#voos").insertAdjacentHTML("afterbegin", `<p class="note over" style="margin-bottom:8px">${esc(errMsg(e))} Os links de busca seguem funcionando.</p>`); });
+
+  const pR = !q.usaOrc ? Promise.resolve() : sample.json(promptRoteiro(q, dias), {signal:ctl.signal}).then(r=>{
+    if(!Array.isArray(r?.dias)) throw {code:"invalid_json"};
+    q.cidadeDestino ||= q.destino;
+    renderRoteiro(r, q, false);
+  }).catch(e=>{ $("#roteiro").innerHTML = e?.code==="cancelled" ? "" : `<div class="empty">${esc(errMsg(e))}</div>`; });
+
+  await Promise.allSettled([pV,pR]);
+  $("#go").disabled = false; $("#stop").hidden = true; status("");
+});
+</script>
